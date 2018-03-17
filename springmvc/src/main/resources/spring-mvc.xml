@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans 	xmlns="http://www.springframework.org/schema/beans" 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:util="http://www.springframework.org/schema/util" 
+		xmlns:p="http://www.springframework.org/schema/p"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+       http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+       http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd">
+	<!--  -->
+	<mvc:annotation-driven conversion-service="conversionService" content-negotiation-manager="contentNegotiationManager" />
+		
+	<context:annotation-config />
+	<!-- Enables the Spring MVC @Controller programming model -->
+	
+	<context:component-scan base-package="com.fangjian.framework.controller">
+		<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+		<context:include-filter type="annotation" expression="org.springframework.stereotype.Component"/>
+	</context:component-scan>
+	
+	<!-- 是否启用注入 -->
+	<aop:aspectj-autoproxy proxy-target-class="true"/>
+	<!-- Spring注解类 -->
+    <bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter" />
+    
+    <!-- 读取系统变量 
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+      <property name="locations">
+      	<value>classpath:configuration.properties</value>
+      </property>
+   </bean>
+   -->
+   
+   <bean id="configProperties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="locations">
+            <list>
+                <value>classpath:application.properties</value>
+            </list>
+        </property>
+    </bean>
+    
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PreferencesPlaceholderConfigurer">
+        <property name="properties" ref="configProperties" />
+    </bean>
+   
+   
+	<!-- mvc:annotation-driven 自定义配置1 -->
+	<bean id="conversionService" class="org.springframework.format.support.FormattingConversionServiceFactoryBean">
+	    <property name="converters">
+	      <set>
+	        <bean class="com.fangjian.framework.core.util.StringToEnumConverterFactory" />
+	      </set>
+	    </property>
+ 	</bean>
+ 	<!-- mvc:annotation-driven 自定义配置2 -->
+	<bean id="contentNegotiationManager" class="org.springframework.web.accept.ContentNegotiationManagerFactoryBean"> 
+		<property name="favorPathExtension" value="false" />
+		<property name="favorParameter" value="false" /> 
+		<property name="ignoreAcceptHeader" value="false" /> 
+		<property name="mediaTypes" > 
+			<value>
+				atom=application/atom+xml
+			 	html=text/html
+				json=application/json
+				*=*/*
+			</value> 
+		</property>
+	</bean>
+
+	<!-- 配置静态资源，直接映射到对应的文件夹，不被DispatcherServlet处理 -->  
+    <mvc:resources mapping="/css/**" location="/css/"/>
+    <mvc:resources mapping="/images/**" location="/images/"/>  
+    <mvc:resources mapping="/js/**" location="/js/"/>  
+    <mvc:resources mapping="/common/**" location="/common/"/>  
+    <mvc:resources mapping="/style/**" location="/style/"/>
+    <!-- 拦截器 ，部分网页提供不登录可以访问，配置不需要拦截的地址即可-->
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <mvc:mapping path="/*" />
+            <mvc:mapping path="/system/*" />
+            <bean class="com.fangjian.framework.core.common.interceptor.UserSecurityInterceptor">
+                <property name="excludedUrls">
+                    <list>
+                    	<value>/index.html</value>
+                        <value>/WeiXinServlet.do</value>
+                        <value>/system/tologin.do</value>
+                        <value>/system/login.do</value>
+                        <value>/system/loginOut.do</value>
+                    </list>
+                </property>
+            </bean>
+        </mvc:interceptor>
+    </mvc:interceptors>
+    
+	<!-- 多视图处理器-->
+	<bean class="com.fangjian.framework.core.view.PlatformViewResolver">
+		<property name="resolvers">
+			<map>
+				<!--	后台Spring MVC 处理方式  -->
+				<entry key="jsp">
+					<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+						<!-- 前缀 -->
+						<property name="prefix" value="/WEB-INF/jsp/" />
+						<!-- 后缀 -->
+						<property name="suffix" value=".jsp" />
+						<!-- 视图内容处理类 -->
+						<property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+					</bean>
+				</entry>
+				
+				<!--	前台freemarker模板处理方式	-->
+				<entry key="html">
+					<!-- <bean class="org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver"> -->
+					<bean class="com.fangjian.framework.core.view.freemark.CustomFreeMarkerViewResolver">
+						<!-- 视图内容处理类 -->
+						<!-- <property name="viewClass" value="org.springframework.web.servlet.view.freemarker.FreeMarkerView" /> -->
+						<property name="viewClass" value="com.fangjian.framework.core.view.freemark.CustomFreeMarkerView" />
+						<!-- 是否缓存 -->
+						<property name="cache" value="false" />
+						<!-- 暴露给模板使用，对应的属性名-->
+						<property name="requestContextAttribute" value="request"/>
+						<!-- 是否暴露request的所有属性值给合并过程 -->
+						<property name="exposeRequestAttributes" value="true"/>
+						<!-- 是否启用模板内容缓存 -->
+						<property name="exposeSessionAttributes" value="true"/>
+						<!-- 宏命令的支持 -->
+						<property name="exposeSpringMacroHelpers" value="true"/>
+						<!-- 模板编码方式 -->
+						<property name="contentType" value="text/html; charset=utf-8" />
+						<!--是否允许Session覆盖  -->
+						<property name="allowSessionOverride" value="true" />
+<!-- 						<property name="suffix" value=".jsp" /> -->
+					</bean>
+				</entry>
+			</map>
+		</property>
+	</bean>
+	
+    <!-- freemarker模板配置 -->
+	<bean class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer">
+		<!-- 配置freemarker属性信息 -->
+		<property name="freemarkerSettings" ref="freemarkerConfiguration" />
+		<!-- 配置freemarker模板根目录  -->
+		<property name="templateLoaderPath">
+			<value>/WEB-INF/view-front/</value>
+		</property>
+	</bean>
+	
+ 	<!-- 配置freemarker属性信息-->
+	<bean id="freemarkerConfiguration" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="location" value="classpath:freemarker.properties" />
+	</bean>
+	
+	
+	<!-- spring mvc信息转换类 -->
+	<!-- 启动Spring MVC的注解功能，完成请求和注解POJO的映射 --> 
+	<bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+		<property name="messageConverters">
+			<util:list id="beanList">
+				<ref bean="stringHttpMessageConverter" />
+				<!-- json信息转换 -->
+				<ref bean="mappingJacksonHttpMessageConverter" />
+				<ref bean="byteArrayMessageConverter" />
+			</util:list>
+		</property>
+	</bean>
+	
+	<!--二进制信息转换  -->
+	<bean id="byteArrayMessageConverter" 
+	 	class="org.springframework.http.converter.ByteArrayHttpMessageConverter"/>
+	 <!-- 配置JSON视图 -->
+     <bean id="mappingJacksonHttpMessageConverter" class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter">
+       <property name="supportedMediaTypes">
+           <list>
+               <value>application/json;charset=UTF-8</value>
+           </list>
+       </property>     
+       <property name="objectMapper">
+           <bean class="org.codehaus.jackson.map.ObjectMapper">
+               <property name="dateFormat">
+                   <bean class="java.text.SimpleDateFormat">
+                       <constructor-arg index="0" type="java.lang.String" value="yyyy-MM-dd HH:mm:ss"/>
+                   </bean>
+               </property>
+           </bean>
+       </property>
+     </bean>
+     <bean id="stringHttpMessageConverter" class="org.springframework.http.converter.StringHttpMessageConverter"/>
+     <bean id="requestMappingHandlerAdapter" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+       <property name="messageConverters">
+           <list>
+               <ref bean="mappingJacksonHttpMessageConverter"/>
+               <ref bean="stringHttpMessageConverter"/>
+           </list>
+       </property>
+     </bean>
+	 <!-- 上传文件，文件流转换 -->
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<!--1024*200即200k 最大文件设置20mb-->  
+        <property name="maxUploadSize" value="20480000"/>  
+        <!--resolveLazily属性启用是为了推迟文件解析，以便在UploadAction 中捕获文件大小异常-->  
+        <property name="resolveLazily" value="true"/>
+	</bean>
+
+	
+	<!-- 自定义异常处理 -->
+    <bean id="exceptionHandler" class="com.fangjian.framework.core.exception.MyHandlerExceptionResolver"/>    
+    
+    <!-- 
+    <bean id="exceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">  
+      <property name="exceptionMappings">   
+        <props>   
+          <prop key="com.youngy.wx.common.exception.SystemException">error/500</prop>   
+          <prop key="com.youngy.wx.common.exception.BusinessException">error/errorpage</prop>  
+          <prop key="java.lang.exception">error/500</prop>  
+       </props>   
+     </property>   
+    </bean>  
+     -->
+    
+    
+	
+    
+    <!-- 打印拦截controlle的执行日志 -->
+    <bean id="logAspect" class="com.fangjian.framework.controller.ControllerLogAspect" />
+	<aop:config>
+		<aop:aspect id="beforeMethod" ref="logAspect">
+			<aop:before method="beforeMethod" pointcut="@annotation(org.springframework.web.bind.annotation.RequestMapping)" />
+		</aop:aspect>
+		<aop:aspect id="afterMethod" ref="logAspect">
+			<aop:before method="afterMethod" pointcut="@annotation(org.springframework.web.bind.annotation.RequestMapping)" />
+		</aop:aspect>
+	</aop:config>
+	
+</beans>
